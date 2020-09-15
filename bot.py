@@ -17,6 +17,7 @@ bot.
 import logging
 import os
 
+from telegram import ParseMode
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler)
@@ -42,7 +43,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-FIRST_QUESTION, EMOTIONS, ENERGY, ATTENTION, CONSCIENTIOUSNESS, PROCRASTINATION, STRESS, REGIME, BODY, COMMENT, RATING, FINISH = range(12)
+EMOTIONS_2, EMOTIONS, ENERGY, ATTENTION, CONSCIENTIOUSNESS, PROCRASTINATION, STRESS, REGIME, BODY, COMMENT, RATING, FINISH = range(12)
 
 
 def facts_to_str(user_data):
@@ -56,6 +57,7 @@ def facts_to_str(user_data):
 
 entry_reply_keyboard = [['/start_session', '/report', '/help']]
 entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+
 
 def start(update, context):
     update.message.reply_text('''Это бот для отслеживания продуктивных состояний психики.''', reply_markup=entry_markup)
@@ -100,49 +102,41 @@ def generate_report(update, context):
     comment,
     rating
     FROM records WHERE user_name='%s' ''' % user['username'], con)
-
-    # Verify that result of SQL query is stored in the dataframe
-    #print(df.head())
-
-    #df.to_csv('dump.csv', encoding='utf-8', sep='\t')
     df.to_excel('report.xlsx', index=None, header=True)
-
     con.close()
-
     context.bot.send_document(chat_id=update.message.chat_id, document=open('report.xlsx', 'rb'))
     update.message.reply_text('''Вот ваш отчет''', reply_markup=entry_markup)
     return ConversationHandler.END
 
 
-#def start_session(update, context):
-#    return FIRST_QUESTION
-
-
 def start_session(update, context):
-    if True:#update.message.text == 'Показать варианты':
-        reply_keyboard = [['Радость, любовь к жизни'], ['Спокойная работа'], ['Тревожность'], ['Негативные эмоции, скачки настроения'], ['/cancel']]
-        #markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-        #update.message.reply_text('Варианты:', reply_markup=markup)
-        #return FIRST_QUESTION
-    #reply_keyboard = [['Показать варианты'], ['/cancel']]
+    reply_keyboard = [['Показать варианты'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''Эмоциональное состояние:
+    update.message.reply_text('''*Эмоциональное состояние:*
 Опишите как ваше эмоциональное состояние влияло на вашу продуктивность.
-Что произошло хорошего? Плохого? В чем была причина? Что можно сделать лучше?
-Была ли радость и любовь к жизни?
-Работалось ли спокойно?
-Была ли тревожность? По какому поводу?
-Были ли негативные эмоции (гнев, страх, зависть)?''', reply_markup=markup)
+ * Какие эмоции вас посещали? 
+ * В чем была причина? 
+ * Что можно сделать лучше?''', reply_markup=markup)
     return EMOTIONS
 
 
-def emotions(update, context):
+def emotions_2(update, context):
     text = update.message.text
     context.user_data['emotions'] = text
     reply_keyboard = [['Активная работа в нужном русле'], ['Нормально, без усталости'], ['Что-то блокирует'], ['Слабая энергия, вялость'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Энергичность:', reply_markup=markup)
+    update.message.reply_text('''*Энергичность:*
+Опишите сколько у вас сегодня энергии.''', reply_markup=markup)
     return ENERGY
+
+
+def emotions(update, context):
+    if update.message.text == 'Показать варианты':
+        reply_keyboard = [['Радость, любовь к жизни'], ['Спокойная работа'], ['Тревожность'], ['Негативные эмоции, скачки настроения'], ['/cancel']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        update.message.reply_text('Варианты:', reply_markup=markup)
+        return EMOTIONS_2
+    return emotions_2(update, context)
 
 
 def energy(update, context):
@@ -150,7 +144,8 @@ def energy(update, context):
     context.user_data['energy'] = text
     reply_keyboard = [['Работал в потоке'], ['Хорошее, скачков нет'], ['Нормальное, внимание сбивается лишь иногда'], ['Сбивчивое, работать трудно'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Внимание:', reply_markup=markup)
+    update.message.reply_text('''*Внимание:*
+ * Как хорошо получается фокусировать внимание?''', reply_markup=markup)
     return ATTENTION
 
 
@@ -159,7 +154,7 @@ def attention(update, context):
     context.user_data['attention'] = text
     reply_keyboard = [['Отдаю отчет своим действиям, налажен диалог с собой'], ['Приходится перебарывать себя'], ['Автопилот, врубается обезьяна'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Осознанность:', reply_markup=markup)
+    update.message.reply_text('''*Осознанность:*''', reply_markup=markup)
     return CONSCIENTIOUSNESS
 
 
@@ -168,7 +163,7 @@ def conscientiousness(update, context):
     context.user_data['conscientiousness'] = text
     reply_keyboard = [['Важные и срочные дела делаются первыми'], ['В основном важные дела делаются, но была прокрастинация'], ['Важные дела не были сделаны или начаты вовремя'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Прокрастинация:', reply_markup=markup)
+    update.message.reply_text('''*Прокрастинация:*''', reply_markup=markup)
     return PROCRASTINATION
 
 
@@ -282,8 +277,8 @@ def main():
         entry_points=[CommandHandler('start', start), CommandHandler('start_session', start_session),CommandHandler('help', help),CommandHandler('report', generate_report)],
 
         states={
-            #FIRST_QUESTION: [MessageHandler(Filters.text & ~Filters.command, first_question)],
             EMOTIONS: [MessageHandler(Filters.text & ~Filters.command, emotions)],
+            EMOTIONS_2: [MessageHandler(Filters.text & ~Filters.command, emotions_2)],
             ENERGY: [MessageHandler(Filters.text & ~Filters.command, energy)],
             ATTENTION: [MessageHandler(Filters.text & ~Filters.command, attention)],
             CONSCIENTIOUSNESS: [MessageHandler(Filters.text & ~Filters.command, conscientiousness)],
