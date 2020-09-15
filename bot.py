@@ -43,7 +43,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-EMOTIONS_2, EMOTIONS, ENERGY, ATTENTION, CONSCIENTIOUSNESS, PROCRASTINATION, STRESS, REGIME, BODY, COMMENT, RATING, FINISH = range(12)
+EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PROCRASTINATION, PROCRASTINATION_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, COMMENT, RATING, FINISH = range(19)
 
 
 def facts_to_str(user_data):
@@ -110,19 +110,27 @@ def generate_report(update, context):
 
 
 def start_session(update, context):
-    reply_keyboard = [['Показать варианты'], ['/cancel']]
+    reply_keyboard = [['Радость, любовь к жизни'], ['Спокойная работа'], ['Тревожность'], ['Негативные эмоции, скачки настроения'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Эмоциональное состояние:*
-Опишите как ваше эмоциональное состояние влияло на вашу продуктивность.
- * Какие эмоции вас посещали? 
- * В чем была причина? 
- * Что можно сделать лучше?''', reply_markup=markup)
+Опишите как ваше эмоциональное состояние влияло на вашу продуктивность.''', reply_markup=markup)
     return EMOTIONS
 
 
+def emotions(update, context):
+    context.user_data['emotions'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * Какие эмоции вас посещали? 
+ * В чем была причина? 
+ * Что можно сделать лучше?''')
+    return EMOTIONS_2
+
+
+sep = ': '
+
 def emotions_2(update, context):
-    text = update.message.text
-    context.user_data['emotions'] = text
+    context.user_data['emotions'] += sep + update.message.text
+
     reply_keyboard = [['Активная работа в нужном русле'], ['Нормально, без усталости'], ['Что-то блокирует'], ['Слабая энергия, вялость'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Энергичность:*
@@ -130,18 +138,17 @@ def emotions_2(update, context):
     return ENERGY
 
 
-def emotions(update, context):
-    if update.message.text == 'Показать варианты':
-        reply_keyboard = [['Радость, любовь к жизни'], ['Спокойная работа'], ['Тревожность'], ['Негативные эмоции, скачки настроения'], ['/cancel']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-        update.message.reply_text('Варианты:', reply_markup=markup)
-        return EMOTIONS_2
-    return emotions_2(update, context)
-
-
 def energy(update, context):
-    text = update.message.text
-    context.user_data['energy'] = text
+    context.user_data['energy'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return ENERGY_2
+
+
+def energy_2(update, context):
+    context.user_data['energy'] += sep + update.message.text
+
     reply_keyboard = [['Работал в потоке'], ['Хорошее, скачков нет'], ['Нормальное, внимание сбивается лишь иногда'], ['Сбивчивое, работать трудно'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Внимание:*
@@ -150,8 +157,16 @@ def energy(update, context):
 
 
 def attention(update, context):
-    text = update.message.text
-    context.user_data['attention'] = text
+    context.user_data['attention'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return ATTENTION_2
+
+
+def attention_2(update, context):
+    context.user_data['attention'] += sep + update.message.text
+
     reply_keyboard = [['Отдаю отчет своим действиям, налажен диалог с собой'], ['Приходится перебарывать себя'], ['Автопилот, врубается обезьяна'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Осознанность:*''', reply_markup=markup)
@@ -159,8 +174,16 @@ def attention(update, context):
 
 
 def conscientiousness(update, context):
-    text = update.message.text
-    context.user_data['conscientiousness'] = text
+    context.user_data['conscientiousness'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return CONSCIENTIOUSNESS_2
+
+
+def conscientiousness_2(update, context):
+    context.user_data['conscientiousness'] += sep + update.message.text
+
     reply_keyboard = [['Важные и срочные дела делаются первыми'], ['В основном важные дела делаются, но была прокрастинация'], ['Важные дела не были сделаны или начаты вовремя'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Прокрастинация:*''', reply_markup=markup)
@@ -168,8 +191,16 @@ def conscientiousness(update, context):
 
 
 def procrastination(update, context):
-    text = update.message.text
-    context.user_data['procrastination'] = text
+    context.user_data['procrastination'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return PROCRASTINATION_2
+
+
+def procrastination_2(update, context):
+    context.user_data['procrastination'] += sep + update.message.text
+
     reply_keyboard = [['Спокоен, внешние вещи не трогают'], ['Трудные задачи, большая ответственность'], ['Небольшое напряжение при подходе к работе'], ['Сильная напряженность'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('Стресс:', reply_markup=markup)
@@ -177,8 +208,16 @@ def procrastination(update, context):
 
 
 def stress(update, context):
-    text = update.message.text
-    context.user_data['stress'] = text
+    context.user_data['stress'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return STRESS_2
+
+
+def stress_2(update, context):
+    context.user_data['stress'] += sep + update.message.text
+
     reply_keyboard = [['Соблюдал заданный распорядок труда, отдыха, питания и упражнений'], ['Соблюдал основные правила, дурные привычки не проявлялись'], ['Нарушение порядка труда и отдыха, рецедив дурных привычек'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('Режим:', reply_markup=markup)
@@ -186,8 +225,16 @@ def stress(update, context):
 
 
 def regime(update, context):
-    text = update.message.text
-    context.user_data['regime'] = text
+    context.user_data['regime'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return REGIME_2
+
+
+def regime_2(update, context):
+    context.user_data['regime'] += sep + update.message.text
+
     reply_keyboard = [['Норма, чувствую себя хорошо, ничего не беспокоит'], ['Есть небольшие отклонения от нормы'], ['Болезнь'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('Тело:', reply_markup=markup)
@@ -195,8 +242,16 @@ def regime(update, context):
 
 
 def body(update, context):
-    text = update.message.text
-    context.user_data['body'] = text
+    context.user_data['body'] = update.message.text
+    update.message.reply_text('''Напишите подробнее
+ * С чем это связано? 
+ * Что можно сделать лучше?''')
+    return BODY_2
+
+
+def body_2(update, context):
+    context.user_data['body'] += sep + update.message.text
+
     update.message.reply_text('Комментарий:')
     return COMMENT
 
@@ -280,12 +335,19 @@ def main():
             EMOTIONS: [MessageHandler(Filters.text & ~Filters.command, emotions)],
             EMOTIONS_2: [MessageHandler(Filters.text & ~Filters.command, emotions_2)],
             ENERGY: [MessageHandler(Filters.text & ~Filters.command, energy)],
+            ENERGY_2: [MessageHandler(Filters.text & ~Filters.command, energy_2)],
             ATTENTION: [MessageHandler(Filters.text & ~Filters.command, attention)],
+            ATTENTION_2: [MessageHandler(Filters.text & ~Filters.command, attention_2)],
             CONSCIENTIOUSNESS: [MessageHandler(Filters.text & ~Filters.command, conscientiousness)],
+            CONSCIENTIOUSNESS_2: [MessageHandler(Filters.text & ~Filters.command, conscientiousness_2)],
             PROCRASTINATION: [MessageHandler(Filters.text & ~Filters.command, procrastination)],
+            PROCRASTINATION_2: [MessageHandler(Filters.text & ~Filters.command, procrastination_2)],
             STRESS: [MessageHandler(Filters.text & ~Filters.command, stress)],
+            STRESS_2: [MessageHandler(Filters.text & ~Filters.command, stress_2)],
             REGIME: [MessageHandler(Filters.text & ~Filters.command, regime)],
+            REGIME_2: [MessageHandler(Filters.text & ~Filters.command, regime_2)],
             BODY: [MessageHandler(Filters.text & ~Filters.command, body)],
+            BODY_2: [MessageHandler(Filters.text & ~Filters.command, body_2)],
             COMMENT: [MessageHandler(Filters.text & ~Filters.command, comment)],
             RATING: [MessageHandler(Filters.text & ~Filters.command, rating)],
             FINISH: [MessageHandler(Filters.regex('^(Save|Discard)$'), finish)]
