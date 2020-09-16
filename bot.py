@@ -43,7 +43,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PROCRASTINATION, PROCRASTINATION_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, COMMENT, RATING, FINISH = range(19)
+EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PROCRASTINATION, PROCRASTINATION_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, COMMENT, RATING = range(18)
 
 
 def facts_to_str(user_data):
@@ -272,39 +272,26 @@ def rating(update, context): #final question
     else:
         update.message.reply_text('Введите 0, 1 или 2')
         return RATING
-    reply_keyboard = [['Save', 'Discard']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text(facts_to_str(context.user_data), reply_markup=markup)
-    return FINISH 
-
-
-def finish(update, context):
-    text = update.message.text
-    if text == 'Save':
-        user = update.message.from_user
-        d = context.user_data
-        record = models.Record(
-            user_id = user['id'],
-            user_name = user['username'],
-            datetime = datetime.now(),
-            emotions = d['emotions'],
-            energy = d['energy'],
-            attention = d['attention'],
-            conscientiousness = d['conscientiousness'],
-            procrastination = d['procrastination'],
-            stress = d['stress'],
-            regime = d['regime'],
-            body = d['body'],
-            comment = d['comment'],
-            rating = int(d['rating'])
-        )
-        session.add(record)
-        session.commit()
-        reply_text = 'Saved'
-    else:
-        reply_text = 'Entry discarted'
-    markup = ReplyKeyboardMarkup([['/start_session', '/report','/help']], one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text(reply_text, reply_markup=markup)
+    user = update.message.from_user
+    d = context.user_data
+    record = models.Record(
+        user_id = user['id'],
+        user_name = user['username'],
+        datetime = datetime.now(),
+        emotions = d['emotions'],
+        energy = d['energy'],
+        attention = d['attention'],
+        conscientiousness = d['conscientiousness'],
+        procrastination = d['procrastination'],
+        stress = d['stress'],
+        regime = d['regime'],
+        body = d['body'],
+        comment = d['comment'],
+        rating = int(d['rating'])
+    )
+    session.add(record)
+    session.commit()
+    update.message.reply_text('Saved', reply_markup=entry_markup)
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -312,8 +299,7 @@ def finish(update, context):
 def cancel(update, context):
     user = update.message.from_user
     logger.info("User %s canceled the session.", user.first_name)
-    markup = ReplyKeyboardMarkup([['/start_session', '/report', '/help']], one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Cancelled', reply_markup=markup)
+    update.message.reply_text('Cancelled', reply_markup=entry_markup)
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -350,7 +336,6 @@ def main():
             BODY_2: [MessageHandler(Filters.text & ~Filters.command, body_2)],
             COMMENT: [MessageHandler(Filters.text & ~Filters.command, comment)],
             RATING: [MessageHandler(Filters.text & ~Filters.command, rating)],
-            FINISH: [MessageHandler(Filters.regex('^(Save|Discard)$'), finish)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
