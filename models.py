@@ -31,6 +31,7 @@ class Record(Base):
     stress = Column(String(500))
     regime = Column(String(500))
     body = Column(String(500))
+    reading = Column(String(500))
     comment = Column(String(500))
     rating = Column(Integer)
 
