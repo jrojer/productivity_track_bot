@@ -43,7 +43,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PROCRASTINATION, PROCRASTINATION_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, COMMENT, RATING = range(18)
+EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, COMMENT, RATING = range(18)
 
 
 def facts_to_str(user_data):
@@ -70,7 +70,7 @@ def help(update, context):
 2. Энергия
 3. Внимание
 4. Сознательность
-5. Прокрастинация
+5. Планирование
 6. Стресс
 7. Режим дня
 8. Здоровье тела
@@ -95,7 +95,7 @@ def generate_report(update, context):
     energy,
     attention,
     conscientiousness,
-    procrastination,
+    planning,
     stress,
     regime,
     body,
@@ -186,20 +186,20 @@ def conscientiousness_2(update, context):
 
     reply_keyboard = [['Важные и срочные дела делаются первыми'], ['В основном важные дела делаются, но была прокрастинация'], ['Важные дела не были сделаны или начаты вовремя'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Прокрастинация:*''', reply_markup=markup)
-    return PROCRASTINATION
+    update.message.reply_text('''*Планирование:*''', reply_markup=markup)
+    return PLANNING
 
 
-def procrastination(update, context):
-    context.user_data['procrastination'] = update.message.text
+def planning(update, context):
+    context.user_data['planning'] = update.message.text
     update.message.reply_text('''Напишите подробнее
  * С чем это связано? 
  * Что можно сделать лучше?''')
-    return PROCRASTINATION_2
+    return PLANNING_2
 
 
-def procrastination_2(update, context):
-    context.user_data['procrastination'] += sep + update.message.text
+def planning_2(update, context):
+    context.user_data['planning'] += sep + update.message.text
 
     reply_keyboard = [['Спокоен, внешние вещи не трогают'], ['Трудные задачи, большая ответственность'], ['Небольшое напряжение при подходе к работе'], ['Сильная напряженность'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
@@ -282,7 +282,7 @@ def rating(update, context): #final question
         energy = d['energy'],
         attention = d['attention'],
         conscientiousness = d['conscientiousness'],
-        procrastination = d['procrastination'],
+        planning = d['planning'],
         stress = d['stress'],
         regime = d['regime'],
         body = d['body'],
@@ -326,8 +326,8 @@ def main():
             ATTENTION_2: [MessageHandler(Filters.text & ~Filters.command, attention_2)],
             CONSCIENTIOUSNESS: [MessageHandler(Filters.text & ~Filters.command, conscientiousness)],
             CONSCIENTIOUSNESS_2: [MessageHandler(Filters.text & ~Filters.command, conscientiousness_2)],
-            PROCRASTINATION: [MessageHandler(Filters.text & ~Filters.command, procrastination)],
-            PROCRASTINATION_2: [MessageHandler(Filters.text & ~Filters.command, procrastination_2)],
+            PLANNING: [MessageHandler(Filters.text & ~Filters.command, planning)],
+            PLANNING_2: [MessageHandler(Filters.text & ~Filters.command, planning_2)],
             STRESS: [MessageHandler(Filters.text & ~Filters.command, stress)],
             STRESS_2: [MessageHandler(Filters.text & ~Filters.command, stress_2)],
             REGIME: [MessageHandler(Filters.text & ~Filters.command, regime)],

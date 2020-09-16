@@ -27,7 +27,7 @@ class Record(Base):
     energy = Column(String(500))
     attention = Column(String(500))
     conscientiousness = Column(String(500))
-    procrastination = Column(String(500))
+    planning = Column(String(500))
     stress = Column(String(500))
     regime = Column(String(500))
     body = Column(String(500))
