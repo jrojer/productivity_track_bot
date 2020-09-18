@@ -28,6 +28,7 @@ import models
 
 import pandas as pd
 import sqlite3
+import openpyxl
 
 
 # Enable database
@@ -76,6 +77,22 @@ def help(update, context):
     return ConversationHandler.END
 
 
+def adjust_cells_shape(xlsx_filepath):
+    wb = openpyxl.load_workbook(filename = xlsx_filepath)        
+    worksheet = wb.active
+    for row in worksheet.iter_rows():
+        for cell in row:
+            cell.alignment = openpyxl.styles.Alignment(wrap_text=True,vertical='top')
+    for col in worksheet.columns:
+        column = col[0].column_letter
+        if column == 'A':
+            width = 15
+        else:
+            width = 30
+        worksheet.column_dimensions[column].width = width
+    wb.save(xlsx_filepath)
+
+
 def generate_report(update, context):
     # Read sqlite query results into a pandas DataFrame
     user = update.message.from_user
@@ -96,6 +113,7 @@ def generate_report(update, context):
     FROM records WHERE user_name='%s' ''' % user['username'], con)
     df.to_excel('report.xlsx', index=None, header=True)
     con.close()
+    adjust_cells_shape('report.xlsx')
     context.bot.send_document(chat_id=update.message.chat_id, document=open('report.xlsx', 'rb'))
     update.message.reply_text('''Вот ваш отчет''', reply_markup=entry_markup)
     return ConversationHandler.END
@@ -103,7 +121,7 @@ def generate_report(update, context):
 
 cancel_cmd = '/cancel'
 reply_kb = {
-    'emotions': [['Радость, удовольствие от работы'], ['Спокойная работа'], ['Тревожность, мысли мешают работать'], [cancel_cmd]],
+    'emotions': [['Радость, удовольствие от работы'], ['Спокойная работа'], ['Напряженная работа'], ['Беспокойство, мысли мешают работать'], [cancel_cmd]],
     'enegry': [],
 }
 
@@ -131,7 +149,7 @@ def emotions(update, context):
         text = 'В чем была причина?'
     elif msg == reply[1][0]:
         text = 'Что можно сделать лучше?'
-    elif msg == reply[2][0]:
+    elif msg in [reply[2][0], reply[3][0]]:
         text = 'В чем причина?\nКак это можно исправить?'
     else:
         text = 'В чем причина?\nЧто можно сделать лучше?'
@@ -148,7 +166,7 @@ def emotions_2(update, context):
     reply_keyboard = [['Активная работа в нужном русле'], ['Работал нормально, без торможения'], ['Что-то блокирует. Работается хуже чем обычно'], ['Слабая энергия, вялость, работать тяжело'], ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Энергичность:*
-Опишите сколько у вас сегодня энергии.''', reply_markup=markup)
+Опишите сколько у вас энергии.''', reply_markup=markup)
     return ENERGY
 
 
@@ -198,7 +216,12 @@ def conscientiousness(update, context):
 def conscientiousness_2(update, context):
     context.user_data['conscientiousness'] += sep + update.message.text
 
-    reply_keyboard = [['Работа идет четко по плану'], ['Плана нет, но важные дела делаются, без прокрастинации'], ['Вмешивается прокрастинация, чувствуется недостаток планирования'], ['Важные дела не были сделаны или не начаты вовремя'], ['/cancel']]
+    reply_keyboard = [  ['Работа идет четко по плану'], 
+                        ['Плана нет, но важные дела делаются, без прокрастинации'],
+                        ['План есть, но мешает прокрастинация'],
+                        ['Вмешивается прокрастинация, чувствуется недостаток планирования'], 
+                        ['Важные дела не были сделаны или не начаты вовремя'], 
+                        ['/cancel']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     update.message.reply_text('''*Планирование:*''', reply_markup=markup)
     return PLANNING
@@ -320,6 +343,7 @@ def comment(update, context):
 0 -- продуктивность ниже нормы, проявлялись плохие привычки и состояния
 1 -- продуктивность дня нормальная, незначительные проявления непродуктивных привычек и состояний
 2 -- продуктивность дня высокая, проявлялось желаемое продуктивное поведение, воспитываются хорошие привычки.
+
 Позже можно будет посмотреть на график.''', reply_markup=markup)
     return RATING
 
@@ -359,7 +383,7 @@ def rating(update, context): #final question
 def cancel(update, context):
     user = update.message.from_user
     logger.info("User %s canceled the session.", user.first_name)
-    update.message.reply_text('Cancelled', reply_markup=entry_markup)
+    update.message.reply_text('''Опрос отменен.''', reply_markup=entry_markup)
     context.user_data.clear()
     return ConversationHandler.END
 
