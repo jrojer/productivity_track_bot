@@ -1,96 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# This program is dedicated to the public domain under the CC0 license.
-
-"""
-First, a few callback functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-
-Usage:
-Example of a bot-user conversation using ConversationHandler.
-Send /start to initiate the conversation.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
 
 import logging
 import os
+from datetime import datetime
 
 from telegram import ParseMode
 from telegram import ReplyKeyboardMarkup
-from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
-                          ConversationHandler)
+from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, ConversationHandler)
+
 from sqlalchemy import create_engine 
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-import models
 
-import pandas as pd
-import sqlite3
-import openpyxl
+import pandas as pd # xlsx table generation
+import sqlite3 # database
+import openpyxl # table shape adjustment
 
+from replies import replies, help_text # bot's texts collection
+import models # bot's database model
 
 # Enable database
-engine = create_engine('sqlite:////root/telegram_bot/bot.db', echo=True)
-models.Base.metadata.create_all(engine)
-Session = sessionmaker()
-Session.configure(bind=engine)
-session = Session()
-
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
-EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2, CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2, STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2, COMMENT, RATING = range(20)
+def init_db():
+    engine = create_engine('sqlite:////root/telegram_bot/bot.db', echo=True)
+    models.Base.metadata.create_all(engine)
+    Session = sessionmaker()
+    Session.configure(bind=engine)
+    return Session()
 
 
-entry_reply_keyboard = [['/start_session', '/report', '/help']]
-entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-
-
-def start(update, context):
-    update.message.reply_text('''Это бот для отслеживания продуктивных состояний психики.''', reply_markup=entry_markup)
-    return ConversationHandler.END
-
-
-def help(update, context):
-    update.message.reply_text('''Бот позволяет вести ежедневник, в котором отслеживаются следующие проявления психической жизни:
-1. Эмоции
-2. Энергия
-3. Внимание
-4. Сознательность
-5. Планирование
-6. Стресс
-7. Режим дня
-8. Здоровье тела
-
-Нажмите /start_session и бот опросит вас по этим пунктам.
-Дайте оценку дня числом 0, 1 или 2, где:
-0 -- продуктивность ниже нормы, проявлялись плохие привычки и состояния
-1 -- продуктивность дня нормальная, незначительные проявления непродуктивных привычек и состояний
-2 -- продуктивность дня высокая, проявлялось желаемое продуктивное поведение, воспитываются хорошие привычки.
-
-Для того, чтобы получить отчет по вашим записям, нажмите /report.''', reply_markup=entry_markup)
-    return ConversationHandler.END
-
-
-def adjust_cells_shape(xlsx_filepath):
-    wb = openpyxl.load_workbook(filename = xlsx_filepath)        
-    worksheet = wb.active
-    for row in worksheet.iter_rows():
-        for cell in row:
-            cell.alignment = openpyxl.styles.Alignment(wrap_text=True,vertical='top')
-    for col in worksheet.columns:
-        column = col[0].column_letter
-        if column == 'A':
-            width = 15
-        else:
-            width = 30
-        worksheet.column_dimensions[column].width = width
-    wb.save(xlsx_filepath)
+def update_db(user, d):
+    record = models.Record(
+        user_id = user['id'],
+        user_name = user['username'],
+        datetime = datetime.now(),
+        emotions = d['emotions'],
+        energy = d['energy'],
+        attention = d['attention'],
+        conscientiousness = d['conscientiousness'],
+        planning = d['planning'],
+        stress = d['stress'],
+        regime = d['regime'],
+        body = d['body'],
+        reading = d['reading'],
+        comment = d['comment'],
+        rating = int(d['rating'])
+    )
+    db_session.add(record)
+    db_session.commit()
 
 
 def generate_report(update, context):
@@ -119,41 +75,79 @@ def generate_report(update, context):
     return ConversationHandler.END
 
 
+def adjust_cells_shape(xlsx_filepath):
+    wb = openpyxl.load_workbook(filename = xlsx_filepath)        
+    worksheet = wb.active
+    for row in worksheet.iter_rows():
+        for cell in row:
+            cell.alignment = openpyxl.styles.Alignment(wrap_text=True,vertical='top')
+    for col in worksheet.columns:
+        column = col[0].column_letter
+        if column == 'A':
+            width = 15
+        else:
+            width = 30
+        worksheet.column_dimensions[column].width = width
+    wb.save(xlsx_filepath)
+
+
 cancel_cmd = '/cancel'
-reply_kb = {
-    'emotions': [['Радость, удовольствие от работы'], ['Спокойная работа'], ['Напряженная работа'], ['Беспокойство, мысли мешают работать'], [cancel_cmd]],
-    'enegry': [],
-}
 
 
-message = {
-    'emotions': '''*Эмоциональное состояние:*
-Опишите как ваше эмоциональное состояние влияло на вашу продуктивность.'''
-}
+def update_message(update, topic):
+    message = replies[topic]['message']
+    if len(replies[topic]['pairs']) > 0:
+        reply_kb = [[x['key']] for x in replies[topic]['pairs']]
+        reply_kb.append([cancel_cmd])
+        markup = ReplyKeyboardMarkup(reply_kb, one_time_keyboard=True, resize_keyboard=True)
+        update.message.reply_text(message, reply_markup=markup)
+    else:
+        update.message.reply_text(message)
 
 
-def markup(topic):
-    return ReplyKeyboardMarkup(reply_kb[topic], one_time_keyboard=True, resize_keyboard=True)
+def get_reply(msg,topic):
+    default = replies[topic]['default_reply']
+    for x in replies[topic]['pairs']:
+        if msg == x['key']:
+            return x['reply'] if len(x['reply']) > 0 else default
+    return default
+
+
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+db_session = init_db()
+
+EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2,\
+    CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2,\
+    STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2, COMMENT, RATING = range(20)
+
+
+entry_reply_keyboard = [['/start_session'], ['/report', '/help']]
+entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+
+
+def start(update, context):
+    update.message.reply_text('''Это бот для отслеживания продуктивных состояний психики.''', reply_markup=entry_markup)
+    return ConversationHandler.END
+
+
+def help(update, context):
+    update.message.reply_text(help_text, reply_markup=entry_markup)
+    return ConversationHandler.END
 
 
 def start_session(update, context):
-    update.message.reply_text(message['emotions'], reply_markup=markup('emotions'))
+    update_message(update, 'emotions')
     return EMOTIONS
 
 
 def emotions(update, context):
-    msg = update.message.text
-    context.user_data['emotions'] = msg
-    reply = reply_kb['emotions']
-    if msg == reply[0][0]:
-        text = 'В чем была причина?'
-    elif msg == reply[1][0]:
-        text = 'Что можно сделать лучше?'
-    elif msg in [reply[2][0], reply[3][0]]:
-        text = 'В чем причина?\nКак это можно исправить?'
-    else:
-        text = 'В чем причина?\nЧто можно сделать лучше?'
-    update.message.reply_text(text)
+    context.user_data['emotions'] = update.message.text
+    update.message.reply_text(get_reply(update.message.text,'emotions'))
     return EMOTIONS_2
 
 
@@ -162,190 +156,112 @@ sep = ': '
 
 def emotions_2(update, context):
     context.user_data['emotions'] += sep + update.message.text
-
-    reply_keyboard = [['Активная работа в нужном русле'], ['Работал нормально, без торможения'], ['Что-то блокирует. Работается хуже чем обычно'], ['Слабая энергия, вялость, работать тяжело'], ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Энергичность:*
-Опишите сколько у вас энергии.''', reply_markup=markup)
+    update_message(update, 'energy')
     return ENERGY
 
 
 def energy(update, context):
     context.user_data['energy'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'energy'))
     return ENERGY_2
 
 
 def energy_2(update, context):
     context.user_data['energy'] += sep + update.message.text
-
-    reply_keyboard = [['Работал в потоке'], ['Хорошее, скачков нет'], ['Нормальное, внимание сбивается лишь иногда'], ['Сбивчивое, работать трудно'], ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Внимание:*
- * Как хорошо получается фокусировать внимание?''', reply_markup=markup)
+    update_message(update, 'attention')
     return ATTENTION
 
 
 def attention(update, context):
     context.user_data['attention'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'attention'))
     return ATTENTION_2
 
 
 def attention_2(update, context):
     context.user_data['attention'] += sep + update.message.text
-
-    reply_keyboard = [['Отдаю отчет своим действиям, налажен диалог с собой'], ['Приходится перебарывать себя'], ['Автопилот, врубается обезьяна'], ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Осознанность:*''', reply_markup=markup)
+    update_message(update, 'conscientiousness')
     return CONSCIENTIOUSNESS
 
 
 def conscientiousness(update, context):
     context.user_data['conscientiousness'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'conscientiousness'))
     return CONSCIENTIOUSNESS_2
 
 
 def conscientiousness_2(update, context):
     context.user_data['conscientiousness'] += sep + update.message.text
-
-    reply_keyboard = [  ['Работа идет четко по плану'], 
-                        ['Плана нет, но важные дела делаются, без прокрастинации'],
-                        ['План есть, но мешает прокрастинация'],
-                        ['Вмешивается прокрастинация, чувствуется недостаток планирования'], 
-                        ['Важные дела не были сделаны или не начаты вовремя'], 
-                        ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Планирование:*''', reply_markup=markup)
+    update_message(update, 'planning')
     return PLANNING
 
 
 def planning(update, context):
     context.user_data['planning'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'planning'))
     return PLANNING_2
 
 
 def planning_2(update, context):
     context.user_data['planning'] += sep + update.message.text
-
-    reply_keyboard = [  ['Спокойствие, внешние вещи не трогают'], 
-                        ['Небольшое фоновое напряжение'], 
-                        ['Трудные задачи, большая ответственность'], 
-                        ['Напряжение при подходе к работе'], 
-                        ['Сильная напряженность'], 
-                        ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Стресс:', reply_markup=markup)
+    update_message(update, 'stress')
     return STRESS
 
 
 def stress(update, context):
     context.user_data['stress'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'stress'))
     return STRESS_2
 
 
 def stress_2(update, context):
     context.user_data['stress'] += sep + update.message.text
-
-    reply_keyboard = [  ['Распорядок дня соблюдается'], 
-                        ['Были нарушения распорядка'], 
-                        ['/cancel']
-    ]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Режим:*
-Опишите как у вас получается соблюдать режим труда, отдыха, питания и упражнений.
-Недостаточный или нерегулярный отдых может снижать продуктивность.
-    ''', reply_markup=markup)
+    update_message(update, 'regime')
     return REGIME
 
 
 def regime(update, context):
     context.user_data['regime'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'regime'))
     return REGIME_2
 
 
 def regime_2(update, context):
     context.user_data['regime'] += sep + update.message.text
-
-    reply_keyboard = [['Сон и самочувствие в норме'], ['Качество сна или самочувствие влияют на продуктивность'], ['Не могу работать из-за плохого самочувствия'], ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('Тело:', reply_markup=markup)
+    update_message(update, 'body')
     return BODY
 
 
 def body(update, context):
     context.user_data['body'] = update.message.text
-    update.message.reply_text('''Напишите подробнее
- * С чем это связано? 
- * Что можно сделать лучше?''')
+    update.message.reply_text(get_reply(update.message.text,'body'))
     return BODY_2
 
 
 def body_2(update, context):
     context.user_data['body'] += sep + update.message.text
-
-    reply_keyboard = [  ['Занимался по плану и конкретным целям, заметки сделаны'], 
-                        ['Не занимался, но подобрал материал'], 
-                        ['Не занимался'], 
-                        ['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''*Чтение/изучение:*
-Важно заниматься каждый день.
-Важно иметь конкретный план, иначе изученное будет забыто или вы изучите то, что не пригодится.''', reply_markup=markup)
+    update_message(update, 'reading')
     return READING
 
 
 def reading(update, context):
     context.user_data['reading'] = update.message.text
-    update.message.reply_text('''Напишите подробнее:
- * Что удалось узнать важного?
- * Был ли план перед чтением и заметки после чтения?
- * Сохранили ли заметки в Anki, чтобы повторить и не забыть?
- * Если не читали, то почему? С чем это связано? 
- * Что можно сделать лучше в следующий раз?''')
+    update.message.reply_text(get_reply(update.message.text,'reading'))
     return READING_2
 
 
 def reading_2(update, context):
     context.user_data['reading'] += sep + update.message.text
-
-    update.message.reply_text('''*Комментарий:*
-Здесь можно описать, например
- * Как начался день
- * Пожелание себе на будущее
- * Мысль дня''')
+    update_message(update, 'comment')
     return COMMENT
 
 
 def comment(update, context):
-    text = update.message.text
-    context.user_data['comment'] = text
-    reply_keyboard = ['0','1','2',['/cancel']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
-    update.message.reply_text('''Оценка:
-Дайте оценку дня числом 0, 1 или 2, где:
-0 -- продуктивность ниже нормы, проявлялись плохие привычки и состояния
-1 -- продуктивность дня нормальная, незначительные проявления непродуктивных привычек и состояний
-2 -- продуктивность дня высокая, проявлялось желаемое продуктивное поведение, воспитываются хорошие привычки.
-
-Позже можно будет посмотреть на график.''', reply_markup=markup)
+    context.user_data['comment'] = update.message.text
+    update_message(update, 'rating')
     return RATING
+
+
 
 
 def rating(update, context): #final question
@@ -355,28 +271,11 @@ def rating(update, context): #final question
     else:
         update.message.reply_text('Введите 0, 1 или 2')
         return RATING
-    user = update.message.from_user
-    d = context.user_data
-    record = models.Record(
-        user_id = user['id'],
-        user_name = user['username'],
-        datetime = datetime.now(),
-        emotions = d['emotions'],
-        energy = d['energy'],
-        attention = d['attention'],
-        conscientiousness = d['conscientiousness'],
-        planning = d['planning'],
-        stress = d['stress'],
-        regime = d['regime'],
-        body = d['body'],
-        reading = d['reading'],
-        comment = d['comment'],
-        rating = int(d['rating'])
-    )
-    session.add(record)
-    session.commit()
-    update.message.reply_text('''Спасибо! Таблицу с данными за все дни можно скачать по команде /report''', reply_markup=entry_markup)
+
+    update_db(update.message.from_user, context.user_data)
     context.user_data.clear()
+
+    update.message.reply_text('''Спасибо! Таблицу с данными за все дни можно скачать по команде /report''', reply_markup=entry_markup)
     return ConversationHandler.END
 
 
