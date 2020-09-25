@@ -1,0 +1,6 @@
+snippets
+examples
+*.db
+*.xlsx
+*.sh
+__pycache__
