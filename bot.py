@@ -19,6 +19,7 @@ import openpyxl # table shape adjustment
 from replies import replies, help_text # bot's texts collection
 import models # bot's database model
 
+
 # Enable database
 def init_db():
     engine = create_engine('sqlite:////root/telegram_bot/bot.db', echo=True)
@@ -260,8 +261,6 @@ def comment(update, context):
     context.user_data['comment'] = update.message.text
     update_message(update, 'rating')
     return RATING
-
-
 
 
 def rating(update, context): #final question
