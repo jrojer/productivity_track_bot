@@ -34,16 +34,16 @@ def update_db(user, d):
         user_id = user['id'],
         user_name = user['username'],
         datetime = datetime.now(),
-        emotions = d['emotions'],
-        energy = d['energy'],
-        attention = d['attention'],
-        conscientiousness = d['conscientiousness'],
-        planning = d['planning'],
-        stress = d['stress'],
-        regime = d['regime'],
-        body = d['body'],
-        reading = d['reading'],
-        comment = d['comment'],
+        emotions = d.get('emotions',''),
+        energy = d.get('energy',''),
+        attention = d.get('attention',''),
+        conscientiousness = d.get('conscientiousness',''),
+        planning = d.get('planning',''),
+        stress = d.get('stress',''),
+        regime = d.get('regime',''),
+        body = d.get('body',''),
+        reading = d.get('reading',''),
+        comment = d.get('comment',''),
         rating = int(d['rating'])
     )
     db_session.add(record)
@@ -175,8 +175,11 @@ def energy_2(update, context):
 
 def attention(update, context):
     context.user_data['attention'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'attention'))
-    return ATTENTION_2
+    # TODO remove workaround
+    #update.message.reply_text(get_reply(update.message.text,'attention'))
+    #return ATTENTION_2
+    update_message(update, 'conscientiousness')
+    return CONSCIENTIOUSNESS
 
 
 def attention_2(update, context):
@@ -187,7 +190,11 @@ def attention_2(update, context):
 
 def conscientiousness(update, context):
     context.user_data['conscientiousness'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'conscientiousness'))
+    reply = get_reply(update.message.text,'conscientiousness')
+    if reply == 'skip':
+        update_message(update, 'planning')
+        return PLANNING
+    update.message.reply_text(reply)
     return CONSCIENTIOUSNESS_2
 
 
@@ -235,8 +242,11 @@ def regime_2(update, context):
 
 def body(update, context):
     context.user_data['body'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'body'))
-    return BODY_2
+    # TODO remove workaround
+    #update.message.reply_text(get_reply(update.message.text,'body'))
+    #return BODY_2
+    update_message(update, 'reading')
+    return READING
 
 
 def body_2(update, context):
