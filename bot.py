@@ -148,7 +148,11 @@ def start_session(update, context):
 
 def emotions(update, context):
     context.user_data['emotions'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'emotions'))
+    reply = get_reply(update.message.text,'emotions')
+    if reply == 'skip':
+        update_message(update, 'energy')
+        return ENERGY
+    update.message.reply_text(reply)
     return EMOTIONS_2
 
 
@@ -242,11 +246,12 @@ def regime_2(update, context):
 
 def body(update, context):
     context.user_data['body'] = update.message.text
-    # TODO remove workaround
-    #update.message.reply_text(get_reply(update.message.text,'body'))
-    #return BODY_2
-    update_message(update, 'reading')
-    return READING
+    reply = get_reply(update.message.text,'body')
+    if reply == 'skip':
+        update_message(update, 'reading')
+        return READING
+    update.message.reply_text(reply)
+    return BODY_2
 
 
 def body_2(update, context):
