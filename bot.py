@@ -127,7 +127,7 @@ EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2,\
     STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2, COMMENT, RATING = range(20)
 
 
-entry_reply_keyboard = [['/start_session'], ['/report', '/help']]
+entry_reply_keyboard = [['/start_session'], ['/comment'], ['/report', '/help']]
 entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
 
 
@@ -267,6 +267,11 @@ def reading_2(update, context):
     return COMMENT
 
 
+def single_comment(update, context):
+    update_message(update, 'comment')
+    return COMMENT
+
+
 def comment(update, context):
     context.user_data['comment'] = update.message.text
     update_message(update, 'rating')
@@ -309,6 +314,7 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[  CommandHandler('start', start), 
                         CommandHandler('start_session', start_session),
+                        CommandHandler('comment', single_comment),
                         CommandHandler('help', help),
                         CommandHandler('report', generate_report)],
 
