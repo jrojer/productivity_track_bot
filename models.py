@@ -32,6 +32,8 @@ class Record(Base):
     regime = Column(String(500))
     body = Column(String(500))
     reading = Column(String(500))
+    day_wish = Column(String(500))
+    day_accomplishment = Column(String(500))
     comment = Column(String(500))
     rating = Column(Integer)
 

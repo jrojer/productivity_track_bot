@@ -43,6 +43,8 @@ def update_db(user, d):
         regime = d.get('regime',''),
         body = d.get('body',''),
         reading = d.get('reading',''),
+        day_wish = d.get('day_wish',''),
+        day_accomplishment = d.get('day_accomplishment',''),
         comment = d.get('comment',''),
         rating = int(d['rating'])
     )
@@ -53,7 +55,7 @@ def update_db(user, d):
 def generate_report(update, context):
     # Read sqlite query results into a pandas DataFrame
     user = update.message.from_user
-    con = sqlite3.connect("bot.db")
+    con = sqlite3.connect("/root/telegram_bot/bot.db")
     df = pd.read_sql_query('''SELECT
     datetime,
     emotions,
@@ -65,6 +67,8 @@ def generate_report(update, context):
     regime,
     body,
     reading,
+    day_wish,
+    day_accomplishment,
     comment,
     rating
     FROM records WHERE user_name='%s' ''' % user['username'], con)
@@ -124,7 +128,8 @@ db_session = init_db()
 
 EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2,\
     CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2,\
-    STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2, COMMENT, RATING = range(20)
+    STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2,\
+        DAY_WISH, DAY_ACCOMPLISHMENT, COMMENT, RATING = range(22)
 
 
 entry_reply_keyboard = [['/start_session'], ['/comment'], ['/report', '/help']]
@@ -268,6 +273,18 @@ def reading(update, context):
 
 def reading_2(update, context):
     context.user_data['reading'] += sep + update.message.text
+    update_message(update, 'day_wish')
+    return DAY_WISH
+
+
+def day_wish(update, context):
+    context.user_data['day_wish'] = update.message.text
+    update_message(update, 'day_accomplishment')
+    return DAY_ACCOMPLISHMENT
+
+
+def day_accomplishment(update, context):
+    context.user_data['day_accomplishment'] = update.message.text
     update_message(update, 'comment')
     return COMMENT
 
@@ -342,6 +359,8 @@ def main():
             BODY_2: [MessageHandler(Filters.text & ~Filters.command, body_2)],
             READING: [MessageHandler(Filters.text & ~Filters.command, reading)],
             READING_2: [MessageHandler(Filters.text & ~Filters.command, reading_2)],
+            DAY_WISH: [MessageHandler(Filters.text & ~Filters.command, day_wish)],
+            DAY_ACCOMPLISHMENT: [MessageHandler(Filters.text & ~Filters.command, day_accomplishment)],
             COMMENT: [MessageHandler(Filters.text & ~Filters.command, comment)],
             RATING: [MessageHandler(Filters.text & ~Filters.command, rating)],
         },

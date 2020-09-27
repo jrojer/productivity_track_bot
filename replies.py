@@ -198,6 +198,16 @@ replies = {
             },
         ]
     },
+    'day_wish':{
+        'message':'*Желание дня:*',
+        'default_reply':'',
+        'pairs': []
+    },
+    'day_accomplishment':{
+        'message':'*Достижение дня:*',
+        'default_reply':'',
+        'pairs': []
+    },
     'comment':{
         'message':'''*Комментарий:*
 Здесь можно описать, например
