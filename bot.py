@@ -15,6 +15,8 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd # xlsx table generation
 import sqlite3 # database
 import openpyxl # table shape adjustment
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 from replies import replies, help_text # bot's texts collection
 import models # bot's database model
@@ -52,6 +54,29 @@ def update_db(user, d):
     db_session.commit()
 
 
+def generate_plot(username):
+    # Read sqlite query results into a pandas DataFrame
+    con = sqlite3.connect("/root/telegram_bot/bot.db")
+    data = pd.read_sql_query('''SELECT datetime, rating
+    FROM records WHERE user_name='%s' ''' % username, con, parse_dates=['datetime'])
+    con.close()
+    #set date as index
+    data.set_index('datetime',inplace=True)
+    #set ggplot style
+    plt.style.use('ggplot')
+    #plot data
+    fig, ax = plt.subplots(figsize=(25,2))
+    ax.plot(data.index, data['rating'])
+    #set ticks every day
+    ax.xaxis.set_major_locator(mdates.DayLocator())
+    #format date
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    ax.set_title('График продуктивности')
+    ax.set_ylabel('Продуктивность')
+    ax.set_xlabel('Дата')
+    return fig
+
+
 def generate_report(update, context):
     # Read sqlite query results into a pandas DataFrame
     user = update.message.from_user
@@ -76,6 +101,9 @@ def generate_report(update, context):
     con.close()
     adjust_cells_shape('report.xlsx')
     context.bot.send_document(chat_id=update.message.chat_id, document=open('report.xlsx', 'rb'))
+    fig = generate_plot(user['username'])
+    fig.savefig('fig.png')
+    context.bot.send_document(chat_id=update.message.chat_id, document=open('fig.png', 'rb'))
     update.message.reply_text('''Вот ваш отчет''', reply_markup=entry_markup)
     return ConversationHandler.END
 
