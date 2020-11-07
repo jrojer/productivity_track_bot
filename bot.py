@@ -22,6 +22,23 @@ from replies import replies, help_text # bot's texts collection
 import models # bot's database model
 
 
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2,\
+    CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2,\
+    STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2,\
+        DAY_WISH, DAY_ACCOMPLISHMENT, COMMENT, RATING = range(22)
+
+cancel_cmd = '/cancel'
+entry_reply_keyboard = [['/start_session'], ['/comment'], ['/report', '/help']]
+entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+empty_markup = ReplyKeyboardMarkup([[cancel_cmd]], one_time_keyboard=True, resize_keyboard=True)
+
+
 # Enable database
 def init_db():
     engine = create_engine('sqlite:////root/telegram_bot/bot.db', echo=True)
@@ -29,6 +46,8 @@ def init_db():
     Session = sessionmaker()
     Session.configure(bind=engine)
     return Session()
+
+db_session = init_db()
 
 
 def update_db(user, d):
@@ -101,9 +120,9 @@ def generate_report(update, context):
     con.close()
     adjust_cells_shape('report.xlsx')
     context.bot.send_document(chat_id=update.message.chat_id, document=open('report.xlsx', 'rb'))
-    fig = generate_plot(user['username'])
-    fig.savefig('fig.png')
-    context.bot.send_document(chat_id=update.message.chat_id, document=open('fig.png', 'rb'))
+    #fig = generate_plot(user['username'])
+    #fig.savefig('fig.png')
+    #context.bot.send_document(chat_id=update.message.chat_id, document=open('fig.png', 'rb'))
     update.message.reply_text('''Вот ваш отчет''', reply_markup=entry_markup)
     return ConversationHandler.END
 
@@ -124,9 +143,6 @@ def adjust_cells_shape(xlsx_filepath):
     wb.save(xlsx_filepath)
 
 
-cancel_cmd = '/cancel'
-
-
 def update_message(update, topic):
     message = replies[topic]['message']
     if len(replies[topic]['pairs']) > 0:
@@ -135,7 +151,7 @@ def update_message(update, topic):
         markup = ReplyKeyboardMarkup(reply_kb, one_time_keyboard=True, resize_keyboard=True)
         update.message.reply_text(message, reply_markup=markup)
     else:
-        update.message.reply_text(message)
+        update.message.reply_text(message, reply_markup=empty_markup)
 
 
 def get_reply(msg,topic):
@@ -144,24 +160,6 @@ def get_reply(msg,topic):
         if msg == x['key']:
             return x['reply'] if len(x['reply']) > 0 else default
     return default
-
-
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
-db_session = init_db()
-
-EMOTIONS_2, EMOTIONS, ENERGY, ENERGY_2, ATTENTION, ATTENTION_2,\
-    CONSCIENTIOUSNESS, CONSCIENTIOUSNESS_2, PLANNING, PLANNING_2,\
-    STRESS, STRESS_2, REGIME, REGIME_2, BODY, BODY_2, READING, READING_2,\
-        DAY_WISH, DAY_ACCOMPLISHMENT, COMMENT, RATING = range(22)
-
-
-entry_reply_keyboard = [['/start_session'], ['/comment'], ['/report', '/help']]
-entry_markup = ReplyKeyboardMarkup(entry_reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
 
 
 def start(update, context):
@@ -200,7 +198,11 @@ def emotions_2(update, context):
 
 def energy(update, context):
     context.user_data['energy'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'energy'))
+    reply = get_reply(update.message.text,'energy')
+    if reply == 'skip':
+        update_message(update, 'attention')
+        return ATTENTION
+    update.message.reply_text(reply)
     return ENERGY_2
 
 
@@ -212,11 +214,12 @@ def energy_2(update, context):
 
 def attention(update, context):
     context.user_data['attention'] = update.message.text
-    # TODO remove workaround
-    #update.message.reply_text(get_reply(update.message.text,'attention'))
-    #return ATTENTION_2
-    update_message(update, 'conscientiousness')
-    return CONSCIENTIOUSNESS
+    reply = get_reply(update.message.text,'attention')
+    if reply == 'skip':
+        update_message(update, 'conscientiousness')
+        return CONSCIENTIOUSNESS
+    update.message.reply_text(reply)
+    return ATTENTION_2
 
 
 def attention_2(update, context):
@@ -249,8 +252,8 @@ def planning(update, context):
 
 def planning_2(update, context):
     context.user_data['planning'] += sep + update.message.text
-    update_message(update, 'stress')
-    return STRESS
+    update_message(update, 'body')
+    return BODY
 
 
 def stress(update, context):
@@ -295,8 +298,9 @@ def body_2(update, context):
 
 def reading(update, context):
     context.user_data['reading'] = update.message.text
-    update.message.reply_text(get_reply(update.message.text,'reading'))
-    return READING_2
+    #update.message.reply_text(get_reply(update.message.text,'reading'))
+    update_message(update, 'day_wish')
+    return DAY_WISH
 
 
 def reading_2(update, context):
